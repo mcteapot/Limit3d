@@ -8,7 +8,8 @@
 var startTime	= Date.now();
 var container;
 var camera, scene, renderer, stats;
-var planeLimitMid, planeLimitPos, planeLimitNeg;
+var planeLimitMid, planeLimitPos, planeLimitNeg; 
+var plane, mesh;
 var cylinderEpsilon;
 
 var gui = new DAT.GUI();
@@ -35,9 +36,9 @@ function DataContainer(message) {
 	this.x = 0;
 	this.y = 10;
 	this.z = 1;
-	this.yPosStart = -40;
-	this.yMidStart = -40
-	this.yNegStart = -40;
+	this.yPosStart = 0;
+	this.yMidStart = 0
+	this.yNegStart = 0;
 	this.radiusE = 5;
 	this.resets = function() {
 		window.location.reload();
@@ -60,7 +61,8 @@ function init() {
 	camera.position.y = 40;
 	// create the Scene
 	scene = new THREE.Scene();
-	//create grid
+	
+	/*//create grid
 	var geometry = new THREE.Geometry();
 	geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( - 500, 0, 0 ) ) );
 	geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( 500, 0, 0 ) ) );
@@ -79,26 +81,53 @@ function init() {
 		scene.addObject( line );
 
 	}
+	*/
 	
+    // Plane
+	//var data = generateHeight( 1024, 1024 );
+    var data;
+	var quality = 17, step = 1024 / quality;
+	var plane = new THREE.PlaneGeometry( 250, 250, quality - 1, quality - 1 );
+	//var plane = new THREE.PlaneGeometry( 250, 250, 3-1, 7-1 );
+
+	for ( var i = 0, l = plane.vertices.length; i < l; i ++ ) {
+	//vetexToCordinates(3-1,7-1,'y',i);
+		var xVal = vetexToCordinates(quality-1,quality-1,'x',i);
+		var yVal = vetexToCordinates(quality-1,quality-1,'y',i);
+	    vetexToCordinates(quality-1,quality-1,'p',i);
+	
+		var x = i % quality, y = ~~ ( i / quality );
+		
+		// mathFunctions
+		var zPos = (xVal*(Math.pow(yVal,2)))*7;
+		//var zPos = (Math.pow(xVal,2) + Math.pow(yVal,2))*6;
+		console.log('point Z:' + zPos);
+		plane.vertices[ i ].position.z = zPos;
+		
+	}
+	mesh = new THREE.Mesh( plane, [ new THREE.MeshBasicMaterial( { color: 0x636363, opacity: 1.0 } ), new THREE.MeshBasicMaterial( { color: 0xffffff, opacity: 0.5, wireframe: true } ) ] );
+	mesh.rotation.x = -90 * Math.PI / 180;
+	mesh.overdraw = true;
+	scene.addObject( mesh );
 
 	// create the onjects
-	planeLimitPos = new THREE.Mesh( new THREE.CubeGeometry( 250, 0.1, 200 ), [ new THREE.MeshBasicMaterial( { color: 0xFF000D, opacity: 0.5 } ), new THREE.MeshBasicMaterial( { color: 0xffffff, opacity: 0.5, wireframe: true } ) ] );
+	planeLimitPos = new THREE.Mesh( new THREE.CubeGeometry( 250, 0.01, 250 ), [ new THREE.MeshBasicMaterial( { color: 0xFF000D, opacity: 0.5 } ), new THREE.MeshBasicMaterial( { color: 0xffffff, opacity: 0.5, wireframe: true } ) ] );
 	planeLimitPos.position.y = dataControl.yPosStart;
 
-	planeLimitMid = new THREE.Mesh( new THREE.CubeGeometry( 250, 0.1, 200 ), [ new THREE.MeshBasicMaterial( { color: 0x00B7FF, opacity: 0.5 } ), new THREE.MeshBasicMaterial( { color: 0xffffff, opacity: 0.5, wireframe: true } ) ]);
+	planeLimitMid = new THREE.Mesh( new THREE.CubeGeometry( 250, 0.1, 250 ), [ new THREE.MeshBasicMaterial( { color: 0x00B7FF, opacity: 0.5 } ), new THREE.MeshBasicMaterial( { color: 0xffffff, opacity: 0.5, wireframe: true } ) ] );
 	planeLimitMid.position.y = dataControl.yMidStart;
 
-	planeLimitNeg = new THREE.Mesh( new THREE.CubeGeometry( 250, 0.1, 200 ), [ new THREE.MeshBasicMaterial( { color: 0xB0FF00, opacity: 0.5 } ), new THREE.MeshBasicMaterial( { color: 0xffffff, opacity: 0.5, wireframe: true } ) ] );
+	planeLimitNeg = new THREE.Mesh( new THREE.CubeGeometry( 250, 0.1, 250 ), [ new THREE.MeshBasicMaterial( { color: 0xB0FF00, opacity: 0.5 } ), new THREE.MeshBasicMaterial( { color: 0xffffff, opacity: 0.5, wireframe: true } ) ] );
 	planeLimitNeg.position.y = dataControl.yNegStart;
 	
-	cylinderEpsilon = new THREE.Mesh ( new THREE.CylinderGeometry (50, dataControl.radiusE, dataControl.radiusE, 200),   new THREE.MeshBasicMaterial( { color: 0xFF6F00, opacity: 0.2 } ) );
+	cylinderEpsilon = new THREE.Mesh ( new THREE.CylinderGeometry (50, dataControl.radiusE, dataControl.radiusE, 800),   new THREE.MeshBasicMaterial( { color: 0x00B7FF, opacity: 0.2 } ) );
 	cylinderEpsilon.rotation.x = Math.PI/2;
 
 	
 
 	
 	// add the object to the scene
-	scene.addObject( planeLimitMid );
+	//scene.addObject( planeLimitMid );
 	scene.addObject( planeLimitPos );
 	scene.addObject( planeLimitNeg );
 	scene.addObject( cylinderEpsilon );
@@ -123,7 +152,6 @@ function init() {
 	document.addEventListener( 'touchmove', onDocumentTouchMove, false );
 }
 
-		
 // ## Mouse Events
 function onDocumentMouseDown( event ) {
 
@@ -202,6 +230,7 @@ function render() {
 	planeLimitMid.rotation.y = objectRotationY;
 	planeLimitPos.rotation.y = objectRotationY;
 	planeLimitNeg.rotation.y = objectRotationY;
+	mesh.rotation.z = objectRotationY;
 
 	//Limit distance
 	planeLimitPos.position.y = dataControl.yPosStart + dataControl.y;
@@ -221,9 +250,44 @@ function render() {
 	renderer.render( scene, camera );
 }
 
+// ## Vertex points to courdinates
+function vetexToCordinates(xRow, yRow, variable, vertex) {
+  var totalPoints = (xRow + 1) * (yRow + 1);
+
+	//console.log("proper x and y rows");
+	if(vertex < totalPoints) {
+		//console.log("vertex in range");
+		var multiplyer = xRow + 1;
+		//console.log("multiplyer:" + multiplyer);
+	
+		var xStart = -(yRow/2);
+		var yStart = -(xRow/2);
+		//console.log('start point(' + xStart + ',' + yStart + ')');
+	
+	  
+		var xAdd = vertex / multiplyer;
+		var yAdd = vertex % multiplyer;
+	  
+		var xOutput = xStart + Math.floor(xAdd);
+		var yOutput = yStart + Math.floor(yAdd);
+		if(variable.toLowerCase() === 'x') {
+			return xOutput;
+		} else if(variable.toLowerCase() === 'y') {
+			return yOutput;
+		} else if(variable.toLowerCase() === 'p') { 
+			console.log('point(' + xOutput + ',' + yOutput + ')');
+
+		} else {
+		console.log('unknown variable');
+		}
+	}
+}
+
 
 // ## bootstrap functions
 // initialiaze everything
 init();
 // make it move			
 animate();
+
+
