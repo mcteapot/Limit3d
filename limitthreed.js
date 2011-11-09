@@ -1,15 +1,14 @@
 // Arjun prakash
 // Limit in 3D using three.js in javascript
 
-
-
-
 // ## variables
 var startTime	= Date.now();
 var container;
 var camera, scene, renderer, stats;
 var planeLimitMid, planeLimitPos, planeLimitNeg; 
 var plane, mesh;
+var limHiText, limLoText, limText, radText;
+
 var cylinderEpsilon;
 
 var gui = new DAT.GUI();
@@ -20,11 +19,17 @@ var targetRotationOnMouseDown = 0;
 
 var objectRotationY = 0;
 
-var mouseX = 0;
+var mouseX = 0, mouseY = 0;
 var mouseXOnMouseDown = 0;
 
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
+
+var limHi = "L+e";
+var limLo = "L-e";
+var lim = "L";
+var rad = "d";
+
 
 var dataControl = new DataContainer('the limit');
 
@@ -34,7 +39,7 @@ function DataContainer(message) {
 	this.message = message;
 	this.size = 100;
 	this.x = 0;
-	this.y = 10;
+	this.y = 30;
 	this.z = 1;
 	this.yPosStart = 0;
 	this.yMidStart = 0
@@ -44,13 +49,13 @@ function DataContainer(message) {
 		window.location.reload();
 	}
 }
+
+//Setup GUI Control
 gui.add(dataControl, 'y', 0.1, 100, 0.01);
-gui.add(dataControl, 'resets').name('RESET THIS SHIT!'); 
+gui.add(dataControl, 'resets').name('RESET'); 
+
 // ## Initialize everything
 function init() {
-	//Setup GUI Control
-
-
 
 	// test if webgl is supported
 	if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
@@ -62,27 +67,50 @@ function init() {
 	// create the Scene
 	scene = new THREE.Scene();
 	
-	/*//create grid
-	var geometry = new THREE.Geometry();
-	geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( - 500, 0, 0 ) ) );
-	geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( 500, 0, 0 ) ) );
 
-	var material = new THREE.LineBasicMaterial( { color: 0x000000, opacity: 0.5 } );
+	// Text
+	var hash = document.location.hash.substr( 1 );
 
-	for ( var i = 0; i <= 10; i ++ ) {
+	if ( hash.length !== 0 ) {
 
-		var line = new THREE.Line( geometry, material );
-		line.position.z = ( i * 100 ) - 500;
-		scene.addObject( line );
-
-		var line = new THREE.Line( geometry, material );
-		line.position.x = ( i * 100 ) - 500;
-		line.rotation.y = 90 * Math.PI / 180;
-		scene.addObject( line );
+		lim = hash;
+		limHi = hash;
+		limLo = hash;
 
 	}
-	*/
-	
+
+	function text3d(text) {
+	return new THREE.TextGeometry( text, { size: 20, height: 5, curveSegments: 2, font: "helvetiker" });
+	}
+
+    var textMaterial = new THREE.MeshBasicMaterial( { color: 0x636363, wireframe: false } );
+
+
+    limText = new THREE.Mesh( text3d(lim), textMaterial );
+    limText.position.x = -220;
+    limText.position.y = 0;
+	limText.overdraw = true;
+    scene.addChild( limText );
+
+    limHiText = new THREE.Mesh( text3d(limHi), textMaterial );
+    limHiText.position.x = -220;
+    limHiText.position.y = 0;
+	limHiText.overdraw = true;
+    scene.addChild( limHiText );
+
+    limLoText = new THREE.Mesh( text3d(limLo), textMaterial );
+    limLoText.position.x = -220;
+    limLoText.position.y = 0;
+	limLoText.overdraw = true;
+    scene.addChild( limLoText );
+
+    radText = new THREE.Mesh( text3d(rad), textMaterial );
+    radText.position.x = 0;
+    radText.position.y = -200;
+	radText.overdraw = true;
+    scene.addChild( radText );
+
+
     // Plane
 	//var data = generateHeight( 1024, 1024 );
     var data;
@@ -99,15 +127,16 @@ function init() {
 		var x = i % quality, y = ~~ ( i / quality );
 		
 		// mathFunctions
-		var zPos = (xVal*(Math.pow(yVal,2)))*7;
-		//var zPos = (Math.pow(xVal,2) + Math.pow(yVal,2))*6;
-		console.log('point Z:' + zPos);
+		var zPos = (xVal*(Math.pow(yVal,2)))*0.2;
+		//var zPos = (Math.pow(xVal,2) + Math.pow(yVal,2))*1;
+		//console.log('point Z:' + zPos);
 		plane.vertices[ i ].position.z = zPos;
 		
 	}
 	mesh = new THREE.Mesh( plane, [ new THREE.MeshBasicMaterial( { color: 0x636363, opacity: 1.0 } ), new THREE.MeshBasicMaterial( { color: 0xffffff, opacity: 0.5, wireframe: true } ) ] );
 	mesh.rotation.x = -90 * Math.PI / 180;
 	mesh.overdraw = true;
+    mesh.doubleSided = true;
 	scene.addObject( mesh );
 
 	// create the onjects
@@ -120,14 +149,12 @@ function init() {
 	planeLimitNeg = new THREE.Mesh( new THREE.CubeGeometry( 250, 0.1, 250 ), [ new THREE.MeshBasicMaterial( { color: 0xB0FF00, opacity: 0.5 } ), new THREE.MeshBasicMaterial( { color: 0xffffff, opacity: 0.5, wireframe: true } ) ] );
 	planeLimitNeg.position.y = dataControl.yNegStart;
 	
-	cylinderEpsilon = new THREE.Mesh ( new THREE.CylinderGeometry (50, dataControl.radiusE, dataControl.radiusE, 800),   new THREE.MeshBasicMaterial( { color: 0x00B7FF, opacity: 0.2 } ) );
+	cylinderEpsilon = new THREE.Mesh ( new THREE.CylinderGeometry (50, dataControl.radiusE, dataControl.radiusE, 400),   new THREE.MeshBasicMaterial( { color: 0x00B7FF, opacity: 0.2 } ) );
 	cylinderEpsilon.rotation.x = Math.PI/2;
 
 	
-
-	
 	// add the object to the scene
-	//scene.addObject( planeLimitMid );
+	scene.addObject( planeLimitMid );
 	scene.addObject( planeLimitPos );
 	scene.addObject( planeLimitNeg );
 	scene.addObject( cylinderEpsilon );
@@ -168,6 +195,7 @@ function onDocumentMouseDown( event ) {
 function onDocumentMouseMove( event ) {
 
 	mouseX = event.clientX - windowHalfX;
+	mouseY = event.clientY - windowHalfY;
 
 	targetRotation = targetRotationOnMouseDown + ( mouseX - mouseXOnMouseDown ) * 0.02;
 }
@@ -191,7 +219,7 @@ function onDocumentTouchStart( event ) {
 	if ( event.touches.length == 1 ) {
 
 		event.preventDefault();
-
+		mouseY = event.touches[ 0 ].pageY - windowHalfY;
 		mouseXOnMouseDown = event.touches[ 0 ].pageX - windowHalfX;
 		targetRotationOnMouseDown = targetRotation;
 
@@ -205,6 +233,8 @@ function onDocumentTouchMove( event ) {
 		event.preventDefault();
 
 		mouseX = event.touches[ 0 ].pageX - windowHalfX;
+		mouseY = event.touches[ 0 ].pageY - windowHalfY;
+
 		targetRotation = targetRotationOnMouseDown + ( mouseX - mouseXOnMouseDown ) * 0.05;
 
 	}
@@ -223,7 +253,7 @@ function animate() {
 
 // ## Render the 3D Scene
 function render() {
-	
+	camera.position.y += (  -mouseY + 200 - camera.position.y ) * .05;
 	
 	objectRotationY += ( targetRotation - objectRotationY ) * 0.05;
 	//rotate onjects
@@ -234,7 +264,14 @@ function render() {
 
 	//Limit distance
 	planeLimitPos.position.y = dataControl.yPosStart + dataControl.y;
+	limHiText.position.y = dataControl.yPosStart + dataControl.y;
+
 	planeLimitNeg.position.y = dataControl.yNegStart - dataControl.y;
+	limLoText.position.y = dataControl.yPosStart - dataControl.y;
+
+	radText.position.x = dataControl.yPosStart + dataControl.y;
+
+
 	if( ( dataControl.radiusE * ( dataControl.y / 50 )) >= .2) {
 	cylinderEpsilon.scale.y = dataControl.radiusE * (dataControl.y / 50);
 	cylinderEpsilon.scale.x =  dataControl.radiusE * (dataControl.y / 50);
@@ -275,13 +312,14 @@ function vetexToCordinates(xRow, yRow, variable, vertex) {
 		} else if(variable.toLowerCase() === 'y') {
 			return yOutput;
 		} else if(variable.toLowerCase() === 'p') { 
-			console.log('point(' + xOutput + ',' + yOutput + ')');
+			//console.log('point(' + xOutput + ',' + yOutput + ')');
 
 		} else {
-		console.log('unknown variable');
+			//console.log('unknown variable');
 		}
 	}
 }
+
 
 
 // ## bootstrap functions
